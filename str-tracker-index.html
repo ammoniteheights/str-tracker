@@ -445,6 +445,59 @@ function checkInbox(){
   }else{
     banner.classList.remove('show');
   }
+  // Kick off background AI lookup for any items that need it
+  inbox.filter(i=>i.needsLookup&&!i._lookingUp).forEach(item=>bgLookup(item));
+}
+
+// Background AI lookup — quietly enriches inbox item then re-renders
+const _lookupInProgress=new Set();
+async function bgLookup(item){
+  if(_lookupInProgress.has(item._id)||!item.link)return;
+  _lookupInProgress.add(item._id);
+  item._lookingUp=true;
+  // Show a subtle spinner on the inbox item if modal is open
+  const el=document.querySelector(`[data-inbox-id="${item._id}"] .ib-lookup-status`);
+  if(el){el.style.display='flex';}
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:600,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:`Visit this product URL and return ONLY a valid JSON object — no markdown, no extra text — with keys: name, price (number), description (brief, size/color/material), vendor (store name), imageUrl (direct image URL ending .jpg/.png/.webp or null). URL: ${item.link}`}]
+      })
+    });
+    if(!res.ok)throw new Error('api');
+    const data=await res.json();
+    const txt=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const match=txt.match(/\{[\s\S]*?\}/);
+    if(match){
+      let pd=null;
+      try{pd=JSON.parse(match[0])}catch(e){}
+      if(pd){
+        const idx=inbox.findIndex(i=>i._id===item._id);
+        if(idx!==-1){
+          if(pd.name&&pd.name.length>2) inbox[idx].name=pd.name;
+          if(pd.price&&pd.price>0) inbox[idx].price=pd.price;
+          if(pd.description) inbox[idx].size=pd.description.slice(0,120);
+          if(pd.vendor) inbox[idx].vendor=pd.vendor;
+          if(pd.imageUrl&&pd.imageUrl.startsWith('http')) inbox[idx].imageUrl=pd.imageUrl;
+          inbox[idx].needsLookup=false;
+          inbox[idx]._lookingUp=false;
+          persist();
+          if(document.getElementById('inboxModal').classList.contains('open')) renderInboxList();
+          showToast(`Details loaded for "${inbox[idx].name.slice(0,25)}"…`,'✨');
+        }
+      }
+    }
+  }catch(e){
+    const idx=inbox.findIndex(i=>i._id===item._id);
+    if(idx!==-1){inbox[idx].needsLookup=false;inbox[idx]._lookingUp=false;}
+  }finally{
+    _lookupInProgress.delete(item._id);
+  }
 }
 function openInbox(){
   renderInboxList();
@@ -460,15 +513,20 @@ function renderInboxList(){
     const div=document.createElement('div');
     div.className='inbox-item';
     div.id=`inbox-item-${idx}`;
+    div.setAttribute('data-inbox-id',item._id||idx);
     const imgHtml=item.imageUrl
       ?`<img src="${esc(item.imageUrl)}" class="inbox-item-img" onerror="this.style.display='none'" alt="">`
       :`<div class="inbox-item-ph">📦</div>`;
+    const lookupHtml=item.needsLookup
+      ?`<div class="ib-lookup-status" style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--teal);margin-top:3px"><div style="width:10px;height:10px;border:1.5px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0"></div>Looking up details…</div>`
+      :`<div class="ib-lookup-status" style="display:none"></div>`;
     div.innerHTML=`
       ${imgHtml}
       <div class="inbox-item-info">
         <div class="inbox-item-name">${esc(item.name||'Unnamed product')}</div>
         <div class="inbox-item-meta">${esc(item.vendor||'')}${item.size?' · '+esc(item.size.slice(0,80)):''}</div>
-        <div class="inbox-item-price">${item.price?fmt(item.price):'Price unknown'}</div>
+        <div class="inbox-item-price">${item.price?fmt(item.price):'Fetching price…'}</div>
+        ${lookupHtml}
         <div class="inbox-field-row">
           <div class="inbox-field">
             <label>Room</label>
