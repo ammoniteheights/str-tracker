@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STR Purchase Tracker — Ammonite Heights</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=DM+Mono:wght@400;500&family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--forest:#0c3430;--forest-mid:#1a5248;--teal:#78c9b0;--sage:#dbedd8;--cream:#f4f1e9;--amber:#ffb865;--coral:#ff865d;--ink:#1c2b28;--ink-soft:#4a6460;--ink-faint:#9ab5b0;--border:#dde9e6;--card:#fff;--bg:#f0ede5;--shadow:0 1px 4px rgba(12,52,48,.08),0 4px 16px rgba(12,52,48,.05);--shadow-lg:0 4px 12px rgba(12,52,48,.12),0 16px 40px rgba(12,52,48,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+.site-header{background:var(--forest);color:#fff;padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:62px;position:sticky;top:0;z-index:300;box-shadow:0 2px 16px rgba(0,0,0,.3)}
+.logo{font-family:'Playfair Display',serif;font-size:1.2rem}.logo em{color:var(--teal);font-style:normal}
+.logo .sub{font-size:.6rem;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.4);display:block;font-family:'Nunito Sans',sans-serif;font-weight:400}
+.hdr-right{display:flex;align-items:center;gap:24px}
+.hdr-stat .lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.4)}
+.hdr-stat .val{font-family:'DM Mono',monospace;font-size:1.15rem;color:var(--amber)}
+.hdr-stat.needed .val{color:#ff9f7a}
+.btn-hdr{display:flex;align-items:center;gap:6px;background:var(--teal);color:var(--forest);border:none;border-radius:7px;padding:8px 16px;font-family:'Nunito Sans',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .14s;white-space:nowrap}
+.btn-hdr:hover{background:#93d9c2;transform:translateY(-1px)}
+.app{display:flex;min-height:calc(100vh - 62px)}
+.sidebar{width:220px;flex-shrink:0;background:var(--forest-mid);padding:20px 0;position:sticky;top:62px;height:calc(100vh - 62px);overflow-y:auto}
+.sb-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.3);padding:0 18px 7px}
+.sb-btn{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;padding:8px 18px;background:none;border:none;font-family:'Nunito Sans',sans-serif;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.6);cursor:pointer;transition:all .12s;position:relative}
+.sb-btn:hover{background:rgba(255,255,255,.06);color:#fff}
+.sb-btn.active{background:rgba(120,201,176,.15);color:var(--teal)}
+.sb-btn.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal);border-radius:0 2px 2px 0}
+.sb-ct{background:rgba(255,255,255,.1);border-radius:99px;padding:1px 7px;font-size:.67rem;color:rgba(255,255,255,.45);flex-shrink:0}
+.sb-divider{height:1px;background:rgba(255,255,255,.08);margin:12px 18px}
+.sb-mini{font-size:.7rem;color:rgba(255,255,255,.4);padding:3px 18px 6px}
+.sb-mini span{font-family:'DM Mono',monospace;color:var(--teal)}
+.btn-manage{display:flex;align-items:center;gap:6px;width:calc(100% - 36px);margin:14px 18px 0;padding:8px 12px;background:rgba(255,255,255,.07);border:1px dashed rgba(255,255,255,.2);border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.76rem;font-weight:600;color:rgba(255,255,255,.5);cursor:pointer;transition:all .14s}
+.btn-manage:hover{background:rgba(120,201,176,.12);border-color:var(--teal);color:var(--teal)}
+.main{flex:1;padding:24px 28px;min-width:0}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+.stat-card{background:var(--card);border-radius:11px;padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--border);border-top:3px solid transparent}
+.stat-card.s1{border-top-color:var(--teal)}.stat-card.s2{border-top-color:var(--amber)}.stat-card.s3{border-top-color:#4a90d9}.stat-card.s4{border-top-color:#5ab878}.stat-card.s5{border-top-color:var(--coral)}
+.st-lbl{font-size:.63rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:5px}
+.st-val{font-family:'DM Mono',monospace;font-size:1.22rem;font-weight:500}
+.st-sub{font-size:.7rem;color:var(--ink-faint);margin-top:2px}
+
+/* INBOX BANNER */
+.inbox-banner{background:linear-gradient(135deg,#1a5248,#0c3430);border-radius:12px;padding:16px 20px;margin-bottom:18px;display:none;align-items:center;justify-content:space-between;gap:16px;box-shadow:var(--shadow-lg);border:1px solid var(--teal)}
+.inbox-banner.show{display:flex;animation:sld .2s ease}
+.inbox-left{display:flex;align-items:center;gap:12px}
+.inbox-icon{font-size:1.5rem}
+.inbox-title{font-family:'Playfair Display',serif;color:#fff;font-size:.95rem}
+.inbox-sub{font-size:.75rem;color:rgba(255,255,255,.55);margin-top:2px}
+.inbox-actions{display:flex;gap:8px;flex-shrink:0}
+.btn-inbox-review{padding:8px 16px;background:var(--teal);color:var(--forest);border:none;border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .12s}
+.btn-inbox-review:hover{background:#93d9c2}
+.btn-inbox-dismiss{padding:8px 12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:none;border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.8rem;cursor:pointer}
+.btn-inbox-dismiss:hover{background:rgba(255,255,255,.18);color:#fff}
+
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:300px}
+.search-wrap input{width:100%;padding:8px 11px 8px 33px;border:1.5px solid var(--border);border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.83rem;color:var(--ink);background:var(--card);outline:none;transition:border-color .13s}
+.search-wrap input:focus{border-color:var(--teal)}
+.search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-size:.8rem;pointer-events:none}
+.fsel{padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.8rem;color:var(--ink);background:var(--card);cursor:pointer;outline:none}
+.fsel:focus{border-color:var(--teal)}
+.toolbar-right{margin-left:auto}
+.btn-sm{padding:7px 13px;border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--card);color:var(--ink-soft);transition:all .12s}
+.btn-sm:hover{border-color:var(--teal);color:var(--forest)}
+.form-panel{background:var(--card);border-radius:13px;border:1px solid var(--border);box-shadow:var(--shadow-lg);margin-bottom:18px;overflow:hidden;display:none}
+.form-panel.open{display:block;animation:sld .18s ease}
+@keyframes sld{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.form-hdr{background:var(--forest);padding:13px 20px;display:flex;align-items:center;justify-content:space-between}
+.form-hdr h3{font-family:'Playfair Display',serif;font-size:.95rem;color:#fff}
+.form-close{background:none;border:none;color:rgba(255,255,255,.55);font-size:1.2rem;cursor:pointer;padding:2px 6px;border-radius:4px}
+.form-close:hover{background:rgba(255,255,255,.1);color:#fff}
+.form-body{padding:20px}
+
+/* URL LOOKUP */
+.url-lookup{background:linear-gradient(135deg,#e8f5f0,#f0ede5);border:1.5px solid var(--teal);border-radius:10px;padding:14px 16px;margin-bottom:18px}
+.url-lookup-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--forest);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.url-lookup-row{display:flex;gap:8px}
+.url-lookup-row input{flex:1;padding:9px 13px;border:1.5px solid var(--border);border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.85rem;color:var(--ink);background:#fff;outline:none;transition:border-color .12s}
+.url-lookup-row input:focus{border-color:var(--teal)}
+.btn-lookup{padding:9px 18px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.83rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .14s;display:flex;align-items:center;gap:7px}
+.btn-lookup:hover{background:var(--teal);color:var(--forest)}
+.btn-lookup:disabled{opacity:.6;cursor:not-allowed}
+.lookup-status{margin-top:9px;font-size:.76rem;color:var(--ink-soft);display:none;align-items:center;gap:8px}
+.lookup-status.show{display:flex}
+.lookup-spinner{width:14px;height:14px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lookup-preview{display:none;margin-top:12px;background:#fff;border-radius:8px;border:1px solid var(--border);padding:12px;gap:12px;align-items:flex-start}
+.lookup-preview.show{display:flex}
+.lookup-preview-img{width:72px;height:72px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid var(--border);background:var(--bg)}
+.lookup-preview-placeholder{width:72px;height:72px;border-radius:6px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:var(--ink-faint);flex-shrink:0}
+.lookup-preview-info{flex:1;min-width:0}
+.lp-name{font-weight:700;font-size:.88rem;color:var(--ink);margin-bottom:3px}
+.lp-meta{font-size:.75rem;color:var(--ink-soft)}
+.lp-price{font-family:'DM Mono',monospace;font-size:1rem;color:var(--forest);font-weight:700;margin-top:3px}
+.btn-use{padding:6px 13px;background:var(--teal);color:var(--forest);border:none;border-radius:6px;font-family:'Nunito Sans',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;margin-top:6px;transition:all .12s}
+.btn-use:hover{background:#93d9c2}
+
+.fg3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:11px;margin-bottom:11px}
+.fg4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:11px}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:700}
+.field input,.field select,.field textarea{padding:8px 11px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito Sans',sans-serif;font-size:.83rem;color:var(--ink);background:var(--cream);outline:none;transition:all .12s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal);background:#fff}
+.field input.ai-filled{border-color:var(--teal);background:#f0faf6}
+.field textarea{resize:vertical;min-height:58px}
+.form-actions{display:flex;gap:9px;justify-content:flex-end;padding-top:4px}
+.btn-save{padding:9px 20px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .14s}
+.btn-save:hover{background:var(--teal);color:var(--forest)}
+.btn-cancel-form{padding:9px 16px;background:none;border:1.5px solid var(--border);border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.85rem;color:var(--ink-soft);cursor:pointer}
+.btn-cancel-form:hover{border-color:var(--ink-soft);color:var(--ink)}
+.table-wrap{background:var(--card);border-radius:11px;box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.tbl-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+thead{background:var(--forest)}
+thead th{padding:10px 13px;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.6);font-weight:700;text-align:left;white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:#fff}
+thead th.r{text-align:right}thead th.c{text-align:center}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f7faf9}
+tbody td{padding:11px 13px;font-size:.82rem;vertical-align:middle}
+.td-thumb{width:44px;height:44px;object-fit:cover;border-radius:5px;border:1px solid var(--border);display:block}
+.td-thumb-ph{width:44px;height:44px;border-radius:5px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:1.1rem}
+.td-name{font-weight:700;max-width:180px}
+.td-note{font-size:.7rem;color:var(--ink-soft);font-weight:400;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.td-r{text-align:right}.td-c{text-align:center}
+.mono{font-family:'DM Mono',monospace;font-weight:500}
+.td-link a{color:var(--teal);text-decoration:none;font-size:.74rem}
+.td-link a:hover{text-decoration:underline}
+.no-link{color:var(--ink-faint);font-size:.74rem}
+.iBtn{background:none;border:none;padding:4px 6px;cursor:pointer;border-radius:5px;color:var(--ink-faint);transition:all .1s;font-size:.88rem}
+.iBtn:hover{background:var(--sage);color:var(--forest)}
+.iBtn.del:hover{background:#fef0ee;color:#c44}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.b-wishlist{background:#fff3e0;color:#e07b00}.b-pending{background:#fff0ec;color:#d44a1a}.b-ordered{background:#e8edf8;color:#3a5ab0}.b-received{background:#e6f4ed;color:#2a7a50}.b-done{background:var(--sage);color:#2a5a30}
+.room-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.savings{font-size:.67rem;color:#2a7a50;background:#e6f4ed;padding:1px 5px;border-radius:4px;margin-left:4px}
+.tbl-footer{background:var(--forest);padding:13px 15px;display:flex;justify-content:space-between;align-items:center}
+.tf-lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)}
+.tf-val{font-family:'DM Mono',monospace;font-size:1.05rem;color:var(--amber)}
+.empty{padding:48px 20px;text-align:center;color:var(--ink-soft)}
+.empty-icon{font-size:2rem;margin-bottom:9px}
+.empty-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--ink);margin-bottom:4px}
+.empty-sub{font-size:.78rem}
+
+/* INBOX MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--card);border-radius:16px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden;animation:mIn .18s ease}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(-8px)}to{opacity:1;transform:none}}
+.modal-hdr{background:var(--forest);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-hdr h2{font-family:'Playfair Display',serif;font-size:1.05rem;color:#fff}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.55);font-size:1.3rem;cursor:pointer;padding:2px 7px;border-radius:4px}
+.modal-close:hover{background:rgba(255,255,255,.1);color:#fff}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+.modal-desc{font-size:.78rem;color:var(--ink-soft);margin-bottom:16px;line-height:1.5}
+.inbox-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.inbox-item-img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0}
+.inbox-item-ph{width:56px;height:56px;border-radius:6px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+.inbox-item-info{flex:1;min-width:0}
+.inbox-item-name{font-weight:700;font-size:.88rem;color:var(--ink);margin-bottom:2px}
+.inbox-item-meta{font-size:.73rem;color:var(--ink-soft)}
+.inbox-item-price{font-family:'DM Mono',monospace;font-size:.9rem;color:var(--forest);font-weight:700;margin-top:2px}
+.inbox-item-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.btn-inbox-add{padding:5px 12px;background:var(--forest);color:#fff;border:none;border-radius:6px;font-family:'Nunito Sans',sans-serif;font-size:.76rem;font-weight:700;cursor:pointer;transition:all .12s}
+.btn-inbox-add:hover{background:var(--teal);color:var(--forest)}
+.btn-inbox-skip{padding:5px 10px;background:none;border:1px solid var(--border);border-radius:6px;font-family:'Nunito Sans',sans-serif;font-size:.76rem;color:var(--ink-soft);cursor:pointer}
+.btn-inbox-skip:hover{border-color:#c44;color:#c44}
+.inbox-field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.inbox-field{display:flex;flex-direction:column;gap:3px}
+.inbox-field label{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:700}
+.inbox-field select,.inbox-field input{padding:6px 9px;border:1.5px solid var(--border);border-radius:5px;font-family:'Nunito Sans',sans-serif;font-size:.8rem;color:var(--ink);background:var(--cream);outline:none}
+.inbox-field select:focus,.inbox-field input:focus{border-color:var(--teal);background:#fff}
+
+/* ROOM MODAL */
+.room-modal{background:var(--card);border-radius:16px;width:100%;max-width:520px;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden;animation:mIn .18s ease}
+.add-room-row{display:flex;gap:8px;margin-bottom:20px}
+.add-room-row input{flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.85rem;color:var(--ink);background:var(--cream);outline:none;transition:border-color .12s}
+.add-room-row input:focus{border-color:var(--teal);background:#fff}
+.btn-add-room{padding:9px 16px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:'Nunito Sans',sans-serif;font-size:.83rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .12s}
+.btn-add-room:hover{background:var(--teal);color:var(--forest)}
+.room-section-hdr{font-size:.63rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700;margin-bottom:8px}
+.room-list{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+.room-row{display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--bg);border-radius:8px;border:1px solid var(--border);transition:border-color .1s}
+.room-row:hover{border-color:var(--teal)}
+.room-dot-lg{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.room-name-txt{flex:1;font-size:.85rem;font-weight:600;color:var(--ink)}
+.room-ct-txt{font-size:.71rem;color:var(--ink-faint);font-family:'DM Mono',monospace}
+.btn-del-room{background:none;border:none;color:var(--ink-faint);font-size:.85rem;cursor:pointer;padding:3px 6px;border-radius:5px;transition:all .1s;flex-shrink:0}
+.btn-del-room:hover:not(:disabled){background:#fef0ee;color:#c44}
+.btn-del-room:disabled{opacity:.25;cursor:not-allowed}
+.modal-tip{font-size:.73rem;color:var(--ink-faint);background:#fffbf0;border:1px solid #ffe4b0;border-radius:7px;padding:9px 13px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--forest);color:#fff;padding:12px 18px;border-radius:9px;font-size:.83rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:999;display:none;align-items:center;gap:10px;max-width:320px}
+.toast.show{display:flex;animation:toastIn .2s ease}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.toast-icon{font-size:1.1rem;flex-shrink:0}
+
+@media(max-width:860px){.sidebar{display:none}.stats-row{grid-template-columns:repeat(2,1fr)}.main{padding:16px}.fg4,.fg3{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="logo">STR <em>Purchase Tracker</em><span class="sub">Ammonite Heights</span></div>
+  <div class="hdr-right">
+    <div class="hdr-stat"><div class="lbl">Grand Total</div><div class="val" id="hdrTotal">$0.00</div></div>
+    <div class="hdr-stat needed"><div class="lbl">Still Needed</div><div class="val" id="hdrNeeded">$0.00</div></div>
+    <button class="btn-hdr" onclick="openForm()">＋ Add Item</button>
+  </div>
+</header>
+
+<div class="app">
+<nav class="sidebar">
+  <div style="margin-bottom:14px">
+    <div class="sb-label">View By Tab</div>
+    <button class="sb-btn active" data-tab="all" onclick="setTab(this)">All Items <span class="sb-ct" id="cnt-all">0</span></button>
+    <button class="sb-btn" data-tab="Furniture and Decor" onclick="setTab(this)">Furniture &amp; Décor <span class="sb-ct" id="cnt-furn">0</span></button>
+    <button class="sb-btn" data-tab="Stocking Items" onclick="setTab(this)">Stocking Items <span class="sb-ct" id="cnt-stock">0</span></button>
+    <button class="sb-btn" data-tab="Upgrades" onclick="setTab(this)">Upgrades <span class="sb-ct" id="cnt-upgr">0</span></button>
+  </div>
+  <div class="sb-divider"></div>
+  <div style="margin-bottom:14px">
+    <div class="sb-label">By Status</div>
+    <button class="sb-btn" data-status="pending" onclick="setStatus(this)">Pending Purchase</button>
+    <button class="sb-btn" data-status="wishlist" onclick="setStatus(this)">Wishlist</button>
+    <button class="sb-btn" data-status="ordered" onclick="setStatus(this)">Ordered</button>
+    <button class="sb-btn" data-status="received" onclick="setStatus(this)">Received</button>
+  </div>
+  <div class="sb-divider"></div>
+  <div>
+    <div class="sb-label">Quick Stats</div>
+    <div class="sb-mini">Received: <span id="sb-recv">$0</span></div>
+    <div class="sb-mini">Still to buy: <span id="sb-buy">$0</span></div>
+  </div>
+  <button class="btn-manage" onclick="openRoomManager()">⚙ Manage Rooms &amp; Spaces</button>
+</nav>
+
+<main class="main">
+  <div class="stats-row">
+    <div class="stat-card s1"><div class="st-lbl">Total Items</div><div class="st-val" id="stItems">0</div><div class="st-sub" id="stRooms">0 spaces</div></div>
+    <div class="stat-card s2"><div class="st-lbl">Grand Total</div><div class="st-val" id="stGrand">$0.00</div><div class="st-sub" id="stSaved">—</div></div>
+    <div class="stat-card s3"><div class="st-lbl">Ordered</div><div class="st-val" id="stOrd">$0.00</div><div class="st-sub" id="stOrdCt">0 items</div></div>
+    <div class="stat-card s4"><div class="st-lbl">Received</div><div class="st-val" id="stRecv">$0.00</div><div class="st-sub" id="stRecvCt">0 items</div></div>
+    <div class="stat-card s5"><div class="st-lbl">Still to Buy</div><div class="st-val" id="stBuy">$0.00</div><div class="st-sub" id="stBuyCt">0 pending</div></div>
+  </div>
+
+  <!-- INBOX BANNER -->
+  <div class="inbox-banner" id="inboxBanner">
+    <div class="inbox-left">
+      <div class="inbox-icon">📥</div>
+      <div>
+        <div class="inbox-title">New items clipped from your browser</div>
+        <div class="inbox-sub" id="inboxSubText">0 items waiting to be added</div>
+      </div>
+    </div>
+    <div class="inbox-actions">
+      <button class="btn-inbox-review" onclick="openInbox()">Review &amp; Add</button>
+      <button class="btn-inbox-dismiss" onclick="dismissInbox()">Dismiss</button>
+    </div>
+  </div>
+
+  <!-- ITEM FORM -->
+  <div class="form-panel" id="formPanel">
+    <div class="form-hdr">
+      <h3 id="formTitle">Add New Item</h3>
+      <button class="form-close" onclick="closeForm()">✕</button>
+    </div>
+    <div class="form-body">
+      <div class="url-lookup" id="urlLookupBar">
+        <div class="url-lookup-label"><span>✨</span> Auto-fill from a product link</div>
+        <div class="url-lookup-row">
+          <input type="url" id="lookupUrl" placeholder="Paste Amazon, Wayfair, Target, or any product URL…" onkeydown="if(event.key==='Enter')doLookup()">
+          <button class="btn-lookup" id="btnLookup" onclick="doLookup()"><span id="lBtnIcon">🔍</span> <span id="lBtnTxt">Look Up</span></button>
+        </div>
+        <div class="lookup-status" id="lookupStatus"><div class="lookup-spinner"></div><span id="lookupStatusTxt">Fetching…</span></div>
+        <div class="lookup-preview" id="lookupPreview">
+          <div id="lookupImgWrap"></div>
+          <div class="lookup-preview-info">
+            <div class="lp-name" id="lpName">—</div>
+            <div class="lp-meta" id="lpMeta">—</div>
+            <div class="lp-price" id="lpPrice">—</div>
+            <button class="btn-use" onclick="applyLookup()">✓ Use this info</button>
+          </div>
+        </div>
+      </div>
+      <div class="fg3">
+        <div class="field"><label>Item Name *</label><input type="text" id="f-name" placeholder="e.g. Coffee table, bath towels…"></div>
+        <div class="field"><label>Category Tab</label><select id="f-tab"><option value="Furniture and Decor">Furniture &amp; Décor</option><option value="Stocking Items">Stocking Items</option><option value="Upgrades">Upgrades</option></select></div>
+        <div class="field"><label>Room / Space</label><select id="f-room"><option value="">— select —</option></select></div>
+      </div>
+      <div class="fg4">
+        <div class="field"><label>Price (before discount)</label><input type="number" id="f-pbefore" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="field"><label>Price (after discount)</label><input type="number" id="f-pafter" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="field"><label>Quantity</label><input type="number" id="f-qty" value="1" min="0" step="1"></div>
+        <div class="field"><label>Shipping</label><input type="number" id="f-ship" placeholder="0.00" min="0" step="0.01"></div>
+      </div>
+      <div class="fg3">
+        <div class="field"><label>Purchase Link</label><input type="url" id="f-link" placeholder="https://…"></div>
+        <div class="field"><label>Vendor</label><input type="text" id="f-vendor" placeholder="Amazon, Wayfair…"></div>
+        <div class="field"><label>Ship To</label><select id="f-shipto"><option value="">—</option><option>Property</option><option>Storage</option><option>Houston</option><option>Other</option></select></div>
+      </div>
+      <div class="fg4">
+        <div class="field"><label>Status</label><select id="f-status"><option value="wishlist">Wishlist</option><option value="pending" selected>Pending Purchase</option><option value="ordered">Ordered</option><option value="received">Received</option><option value="done">Done / Use Existing</option></select></div>
+        <div class="field"><label>Priority (1=highest)</label><select id="f-priority"><option value="1">1 — Must Have</option><option value="2" selected>2 — High</option><option value="3">3 — Medium</option><option value="4">4 — Low</option></select></div>
+        <div class="field"><label>Order / Tracking #</label><input type="text" id="f-tracking" placeholder="Order or tracking #"></div>
+        <div class="field"><label>Arrival / Date</label><input type="text" id="f-arrival" placeholder="Arrived or expected"></div>
+      </div>
+      <div class="fg2">
+        <div class="field"><label>Size / Description</label><input type="text" id="f-size" placeholder="Dimensions, color, style…"></div>
+        <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Any additional notes…"></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel-form" onclick="closeForm()">Cancel</button>
+        <button class="btn-save" onclick="saveItem()">Save Item</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap"><span class="search-ico">🔍</span><input type="text" id="searchInput" placeholder="Search items, vendors, rooms…" oninput="render()"></div>
+    <select class="fsel" id="filterRoom" onchange="render()"><option value="">All Rooms</option></select>
+    <select class="fsel" id="filterStatus" onchange="render()"><option value="">All Statuses</option><option value="wishlist">Wishlist</option><option value="pending">Pending</option><option value="ordered">Ordered</option><option value="received">Received</option><option value="done">Done/Existing</option></select>
+    <select class="fsel" id="filterPriority" onchange="render()"><option value="">All Priorities</option><option value="1">Priority 1</option><option value="2">Priority 2</option><option value="3">Priority 3</option><option value="4">Priority 4</option></select>
+    <div class="toolbar-right"><button class="btn-sm" onclick="exportCSV()">⬇ Export CSV</button></div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th style="width:52px">Photo</th>
+          <th onclick="srt('room')">Room ↕</th>
+          <th onclick="srt('name')">Item ↕</th>
+          <th>Tab</th><th>Vendor</th><th>Link</th>
+          <th class="r" onclick="srt('unitPrice')">Unit Price ↕</th>
+          <th class="c">Qty</th>
+          <th class="r" onclick="srt('lineTotal')">Total ↕</th>
+          <th class="c">Pri</th><th class="c">Status</th><th>Tracking</th>
+          <th class="c">Actions</th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="empty" style="display:none">
+      <div class="empty-icon">🛒</div>
+      <div class="empty-title">No items yet</div>
+      <div class="empty-sub">Click "+ Add Item" or use the browser extension to clip products.</div>
+    </div>
+    <div class="tbl-footer" id="tblFooter" style="display:none">
+      <div class="tf-lbl">Filtered Total</div>
+      <div style="text-align:right"><div class="tf-val" id="filtTotal">$0.00</div><div style="font-size:.65rem;color:rgba(255,255,255,.38)" id="filtCount">0 items</div></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- INBOX MODAL -->
+<div class="modal-overlay" id="inboxModal" onclick="maybeClose(event,'inboxModal')">
+  <div class="modal">
+    <div class="modal-hdr"><h2>📥 Clipped Items Inbox</h2><button class="modal-close" onclick="closeInbox()">✕</button></div>
+    <div class="modal-body">
+      <p class="modal-desc">These products were clipped from your browser. Review and add them to your tracker, or skip to discard.</p>
+      <div id="inboxList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ROOM MANAGER MODAL -->
+<div class="modal-overlay" id="roomModal" onclick="maybeClose(event,'roomModal')">
+  <div class="modal room-modal">
+    <div class="modal-hdr"><h2>Manage Rooms &amp; Spaces</h2><button class="modal-close" onclick="closeRoomModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="modal-desc">Add or remove rooms. Rooms with items can't be deleted until items are reassigned.</p>
+      <div class="add-room-row">
+        <input type="text" id="newRoomInput" placeholder="e.g. Sunroom, Garage, Loft…" onkeydown="if(event.key==='Enter')addRoom()">
+        <button class="btn-add-room" onclick="addRoom()">＋ Add</button>
+      </div>
+      <div class="room-section-hdr">Current Rooms &amp; Spaces</div>
+      <div class="room-list" id="roomList"></div>
+      <div class="modal-tip">💡 Rooms appear automatically in the item form and filter bar.</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span class="toast-icon" id="toastIcon">✅</span><span id="toastMsg"></span></div>
+
+<script>
+const DEFAULT_ROOMS=['Living Room','Kitchen','Bedroom 1','Bedroom 2','Bedroom 3','Bathroom 1','Bathroom 2','Bathroom 3','Front Exterior','Back Exterior'];
+const PALETTE=['#3a7fc1','#c87941','#3d9e6e','#a24db0','#e07b00','#8B5E3C','#5b94cc','#5ab878','#d44a8a','#2a7a7a','#7c6bb0','#c94a4a','#4a8a4a','#b07c3a','#4a4ab0','#888','#6aab9e','#c0784a','#7aaa5a','#9a6ab0'];
+function rc(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))&0xFFFFFF;return PALETTE[Math.abs(h)%PALETTE.length]}
+
+let rooms=JSON.parse(localStorage.getItem('str_rooms')||'null')||[...DEFAULT_ROOMS];
+let items=JSON.parse(localStorage.getItem('str_items')||'[]');
+// Inbox: items clipped from extension, not yet added
+let inbox=JSON.parse(localStorage.getItem('str_inbox')||'[]');
+let editId=null,currentTab='all',currentStatus=null,sortCol=null,sortDir=1;
+let pendingLookup=null;
+
+function persist(){
+  localStorage.setItem('str_rooms',JSON.stringify(rooms));
+  localStorage.setItem('str_items',JSON.stringify(items));
+  localStorage.setItem('str_inbox',JSON.stringify(inbox));
+}
+
+const fmt=n=>(isNaN(n)||n===null)?'—':'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const TAB_SHORT={'Furniture and Decor':'Furn/Décor','Stocking Items':'Stocking','Upgrades':'Upgrades'};
+const STATUS_CFG={wishlist:{label:'Wishlist',cls:'b-wishlist'},pending:{label:'Pending',cls:'b-pending'},ordered:{label:'Ordered',cls:'b-ordered'},received:{label:'Received',cls:'b-received'},done:{label:'Done/Existing',cls:'b-done'}};
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg,icon='✅'){
+  clearTimeout(toastTimer);
+  document.getElementById('toastMsg').textContent=msg;
+  document.getElementById('toastIcon').textContent=icon;
+  const t=document.getElementById('toast');
+  t.classList.add('show');
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── CHECK URL PARAMS (from extension) ──
+function checkUrlParams(){
+  const p=new URLSearchParams(window.location.search);
+  if(p.has('clip')){
+    try{
+      const data=JSON.parse(decodeURIComponent(p.get('clip')));
+      inbox.push({...data,_id:Date.now()});
+      persist();
+      // Clean URL
+      window.history.replaceState({},'',window.location.pathname);
+    }catch(e){}
+  }
+}
+
+// ── INBOX ──
+function checkInbox(){
+  const banner=document.getElementById('inboxBanner');
+  if(inbox.length>0){
+    document.getElementById('inboxSubText').textContent=`${inbox.length} item${inbox.length!==1?'s':''} waiting to be added`;
+    banner.classList.add('show');
+  }else{
+    banner.classList.remove('show');
+  }
+  // Kick off background AI lookup for any items that need it
+  inbox.filter(i=>i.needsLookup&&!i._lookingUp).forEach(item=>bgLookup(item));
+}
+
+// Background AI lookup — quietly enriches inbox item then re-renders
+const _lookupInProgress=new Set();
+async function bgLookup(item){
+  if(_lookupInProgress.has(item._id)||!item.link)return;
+  _lookupInProgress.add(item._id);
+  item._lookingUp=true;
+  // Show a subtle spinner on the inbox item if modal is open
+  const el=document.querySelector(`[data-inbox-id="${item._id}"] .ib-lookup-status`);
+  if(el){el.style.display='flex';}
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:600,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:`Visit this product URL and return ONLY a valid JSON object — no markdown, no extra text — with keys: name, price (number), description (brief, size/color/material), vendor (store name), imageUrl (direct image URL ending .jpg/.png/.webp or null). URL: ${item.link}`}]
+      })
+    });
+    if(!res.ok)throw new Error('api');
+    const data=await res.json();
+    const txt=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const match=txt.match(/\{[\s\S]*?\}/);
+    if(match){
+      let pd=null;
+      try{pd=JSON.parse(match[0])}catch(e){}
+      if(pd){
+        const idx=inbox.findIndex(i=>i._id===item._id);
+        if(idx!==-1){
+          if(pd.name&&pd.name.length>2) inbox[idx].name=pd.name;
+          if(pd.price&&pd.price>0) inbox[idx].price=pd.price;
+          if(pd.description) inbox[idx].size=pd.description.slice(0,120);
+          if(pd.vendor) inbox[idx].vendor=pd.vendor;
+          if(pd.imageUrl&&pd.imageUrl.startsWith('http')) inbox[idx].imageUrl=pd.imageUrl;
+          inbox[idx].needsLookup=false;
+          inbox[idx]._lookingUp=false;
+          persist();
+          if(document.getElementById('inboxModal').classList.contains('open')) renderInboxList();
+          showToast(`Details loaded for "${inbox[idx].name.slice(0,25)}"…`,'✨');
+        }
+      }
+    }
+  }catch(e){
+    const idx=inbox.findIndex(i=>i._id===item._id);
+    if(idx!==-1){inbox[idx].needsLookup=false;inbox[idx]._lookingUp=false;}
+  }finally{
+    _lookupInProgress.delete(item._id);
+  }
+}
+function openInbox(){
+  renderInboxList();
+  document.getElementById('inboxModal').classList.add('open');
+}
+function closeInbox(){document.getElementById('inboxModal').classList.remove('open');checkInbox()}
+function dismissInbox(){inbox=[];persist();checkInbox();showToast('Inbox cleared','🗑')}
+function renderInboxList(){
+  const list=document.getElementById('inboxList');
+  list.innerHTML='';
+  if(!inbox.length){list.innerHTML='<div style="text-align:center;color:var(--ink-faint);padding:20px">Inbox is empty</div>';return}
+  inbox.forEach((item,idx)=>{
+    const div=document.createElement('div');
+    div.className='inbox-item';
+    div.id=`inbox-item-${idx}`;
+    div.setAttribute('data-inbox-id',item._id||idx);
+    const imgHtml=item.imageUrl
+      ?`<img src="${esc(item.imageUrl)}" class="inbox-item-img" onerror="this.style.display='none'" alt="">`
+      :`<div class="inbox-item-ph">📦</div>`;
+    const lookupHtml=item.needsLookup
+      ?`<div class="ib-lookup-status" style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--teal);margin-top:3px"><div style="width:10px;height:10px;border:1.5px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0"></div>Looking up details…</div>`
+      :`<div class="ib-lookup-status" style="display:none"></div>`;
+    div.innerHTML=`
+      ${imgHtml}
+      <div class="inbox-item-info">
+        <div class="inbox-item-name">${esc(item.name||'Unnamed product')}</div>
+        <div class="inbox-item-meta">${esc(item.vendor||'')}${item.size?' · '+esc(item.size.slice(0,80)):''}</div>
+        <div class="inbox-item-price">${item.price?fmt(item.price):'Fetching price…'}</div>
+        ${lookupHtml}
+        <div class="inbox-field-row">
+          <div class="inbox-field">
+            <label>Room</label>
+            <select id="ib-room-${idx}">
+              <option value="">— select —</option>
+              ${rooms.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="inbox-field">
+            <label>Status</label>
+            <select id="ib-status-${idx}">
+              <option value="wishlist">Wishlist</option>
+              <option value="pending" selected>Pending</option>
+              <option value="ordered">Ordered</option>
+            </select>
+          </div>
+        </div>
+        <div class="inbox-item-actions">
+          <button class="btn-inbox-add" onclick="addFromInbox(${idx})">＋ Add to Tracker</button>
+          <button class="btn-inbox-skip" onclick="skipInbox(${idx})">Skip</button>
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+function addFromInbox(idx){
+  const item=inbox[idx];
+  if(!item)return;
+  const room=document.getElementById(`ib-room-${idx}`)?.value||'';
+  const status=document.getElementById(`ib-status-${idx}`)?.value||'pending';
+  const p=item.price||null;
+  const newItem={
+    id:Date.now()+idx,
+    name:item.name||'Product',
+    tab:item.tab||'Furniture and Decor',
+    room,status,priority:2,
+    priceBefore:p,priceAfter:p,
+    qty:1,link:item.link||'',
+    vendor:item.vendor||'',
+    size:item.size||'',
+    imageUrl:item.imageUrl||null,
+    notes:'',tracking:'',arrival:'',shipping:null,shipTo:'',
+    unitPrice:p||0,lineTotal:p||0,
+  };
+  items.push(newItem);
+  inbox.splice(idx,1);
+  persist();
+  renderInboxList();
+  updateStats();updateCounts();render();
+  showToast(`"${newItem.name.slice(0,30)}" added!`,'✅');
+  if(!inbox.length)closeInbox();
+}
+function skipInbox(idx){
+  inbox.splice(idx,1);
+  persist();renderInboxList();
+  if(!inbox.length)closeInbox();
+}
+
+// ── URL LOOKUP ──
+function detectVendor(url){
+  try{const h=new URL(url).hostname.toLowerCase();
+    const map=[['amazon','Amazon'],['wayfair','Wayfair'],['target','Target'],['walmart','Walmart'],['overstock','Overstock'],['homedepot','Home Depot'],['lowes',"Lowe's"],['potterybarn','Pottery Barn'],['westelm','West Elm'],['cb2','CB2'],['crateandbarrel','Crate & Barrel'],['article','Article'],['ikea','IKEA'],['etsy','Etsy'],['costco','Costco'],['worldmarket','World Market'],['zgallerie','Z Gallerie']];
+    for(const[k,v]of map)if(h.includes(k))return v;
+    const p=h.replace('www.','').split('.');return p[0].charAt(0).toUpperCase()+p[0].slice(1);
+  }catch{return''}
+}
+async function doLookup(){
+  const url=document.getElementById('lookupUrl').value.trim();
+  if(!url){alert('Paste a product URL first.');return}
+  const btn=document.getElementById('btnLookup');
+  btn.disabled=true;document.getElementById('lBtnIcon').textContent='⏳';document.getElementById('lBtnTxt').textContent='Looking up…';
+  const status=document.getElementById('lookupStatus');status.classList.add('show');
+  document.getElementById('lookupStatusTxt').textContent='Reading product with AI…';
+  document.getElementById('lookupPreview').classList.remove('show');
+  pendingLookup=null;
+  try{
+    const vendor=detectVendor(url);
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:`Visit this product URL and return ONLY a JSON object (no markdown, no extra text) with these keys: name, price (number), description (brief, include size/dimensions/color), vendor (store name), imageUrl (direct image URL ending in .jpg/.png/.webp), category (one of: Furniture, Linens, Kitchen, Decor, Electronics, Outdoor, Stocking, Other). URL: ${url}`}]})});
+    if(!res.ok)throw new Error('API error');
+    const data=await res.json();
+    const txt=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const match=txt.match(/\{[\s\S]*?\}/);
+    let pd=null;
+    if(match){try{pd=JSON.parse(match[0])}catch(e){}}
+    if(!pd)pd={name:'',price:null,description:'',vendor,imageUrl:null,category:'Other'};
+    pd.vendor=pd.vendor||vendor;pd._url=url;
+    pendingLookup=pd;
+    showLookupPreview(pd,url);
+    status.classList.remove('show');
+  }catch(e){
+    const vendor=detectVendor(url);
+    pendingLookup={name:'',price:null,description:'',vendor,imageUrl:null,category:'Other',_url:url};
+    showLookupPreview(pendingLookup,url);
+    document.getElementById('lookupStatusTxt').textContent='Auto-fill limited — fill in details manually.';
+    setTimeout(()=>status.classList.remove('show'),3000);
+  }finally{
+    btn.disabled=false;document.getElementById('lBtnIcon').textContent='🔍';document.getElementById('lBtnTxt').textContent='Look Up';
+  }
+}
+function showLookupPreview(d,url){
+  const wrap=document.getElementById('lookupImgWrap');wrap.innerHTML='';
+  if(d.imageUrl){const img=document.createElement('img');img.src=d.imageUrl;img.className='lookup-preview-img';img.onerror=()=>{wrap.innerHTML='<div class="lookup-preview-placeholder">📦</div>'};wrap.appendChild(img)}
+  else wrap.innerHTML='<div class="lookup-preview-placeholder">📦</div>';
+  document.getElementById('lpName').textContent=d.name||'(name not found)';
+  try{document.getElementById('lpMeta').textContent=[d.vendor,d.description].filter(Boolean).join(' · ').slice(0,100)||(new URL(url).hostname)}catch{}
+  document.getElementById('lpPrice').textContent=d.price?fmt(d.price):'Price not found';
+  document.getElementById('lookupPreview').classList.add('show');
+}
+function applyLookup(){
+  if(!pendingLookup)return;const d=pendingLookup;
+  if(d.name)setF('f-name',d.name);
+  if(d.price)setF('f-pbefore',d.price);
+  if(d._url)setF('f-link',d._url);
+  if(d.vendor)setF('f-vendor',d.vendor);
+  if(d.description)setF('f-size',d.description.slice(0,120));
+  const cat=(d.category||'').toLowerCase();
+  if(['furniture','linens','decor','electronics'].some(c=>cat.includes(c)))document.getElementById('f-tab').value='Furniture and Decor';
+  else if(['kitchen','stocking','bath'].some(c=>cat.includes(c)))document.getElementById('f-tab').value='Stocking Items';
+  else if(['outdoor','upgrade'].some(c=>cat.includes(c)))document.getElementById('f-tab').value='Upgrades';
+  window._pendingImg=d.imageUrl||null;
+  ['f-name','f-pbefore','f-link','f-vendor','f-size'].forEach(id=>{const el=document.getElementById(id);if(el&&el.value){el.classList.add('ai-filled');setTimeout(()=>el.classList.remove('ai-filled'),2000)}});
+  document.getElementById('lookupPreview').classList.remove('show');
+  document.getElementById('f-name').focus();
+}
+function setF(id,val){const el=document.getElementById(id);if(el)el.value=val}
+
+// ── ROOM MANAGER ──
+function openRoomManager(){renderRoomList();document.getElementById('roomModal').classList.add('open');setTimeout(()=>document.getElementById('newRoomInput').focus(),50)}
+function closeRoomModal(){document.getElementById('roomModal').classList.remove('open');updateRoomDropdowns();render()}
+function maybeClose(e,id){if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('open')}
+function renderRoomList(){
+  const list=document.getElementById('roomList');list.innerHTML='';
+  if(!rooms.length){list.innerHTML='<div style="color:var(--ink-faint);font-size:.8rem;padding:10px 0">No rooms yet.</div>';return}
+  rooms.forEach(room=>{
+    const ct=items.filter(i=>i.room===room).length;const color=rc(room);
+    const row=document.createElement('div');row.className='room-row';
+    row.innerHTML=`<span class="room-dot-lg" style="background:${color}"></span><span class="room-name-txt">${esc(room)}</span><span class="room-ct-txt">${ct} item${ct!==1?'s':''}</span><button class="btn-del-room" ${ct>0?'disabled':''} onclick="deleteRoom(${JSON.stringify(room)})">🗑</button>`;
+    list.appendChild(row);
+  });
+}
+function addRoom(){
+  const input=document.getElementById('newRoomInput');const name=input.value.trim();
+  if(!name)return;
+  if(rooms.some(r=>r.toLowerCase()===name.toLowerCase())){alert('That room already exists.');return}
+  rooms.push(name);persist();input.value='';renderRoomList();
+}
+function deleteRoom(name){
+  const ct=items.filter(i=>i.room===name).length;
+  if(ct>0){alert(`"${name}" has ${ct} items. Remove or reassign first.`);return}
+  if(!confirm(`Remove "${name}"?`))return;
+  rooms=rooms.filter(r=>r!==name);persist();renderRoomList();
+}
+function updateRoomDropdowns(){
+  ['f-room','filterRoom'].forEach(id=>{
+    const sel=document.getElementById(id);const cur=sel.value;
+    sel.innerHTML=id==='filterRoom'?'<option value="">All Rooms</option>':'<option value="">— select —</option>';
+    rooms.forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;sel.appendChild(o)});
+    if(rooms.includes(cur))sel.value=cur;
+  });
+}
+
+// ── FILTER / SORT ──
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const room=document.getElementById('filterRoom').value;
+  const status=document.getElementById('filterStatus').value||currentStatus;
+  const prio=document.getElementById('filterPriority').value;
+  let list=items.filter(it=>{
+    if(currentTab!=='all'&&it.tab!==currentTab)return false;
+    if(room&&it.room!==room)return false;
+    if(status&&it.status!==status)return false;
+    if(prio&&String(it.priority)!==prio)return false;
+    if(q){const h=[it.name,it.vendor,it.room,it.notes,it.size,it.tracking].join(' ').toLowerCase();if(!h.includes(q))return false}
+    return true;
+  });
+  if(sortCol)list.sort((a,b)=>{let va=a[sortCol]??'',vb=b[sortCol]??'';return(typeof va==='number'&&typeof vb==='number')?(va-vb)*sortDir:String(va).localeCompare(String(vb))*sortDir});
+  return list;
+}
+
+// ── RENDER ──
+function render(){
+  const list=getFiltered();
+  const body=document.getElementById('tableBody');
+  const empty=document.getElementById('emptyState');
+  const footer=document.getElementById('tblFooter');
+  body.innerHTML='';
+  if(!list.length){empty.style.display='block';footer.style.display='none'}
+  else{
+    empty.style.display='none';footer.style.display='flex';
+    list.forEach(it=>{
+      const up=it.priceAfter??it.priceBefore??null;
+      const total=up!==null?up*(it.qty||1):null;
+      const hasSav=it.priceBefore&&it.priceAfter&&it.priceAfter<it.priceBefore;
+      const sc=STATUS_CFG[it.status]||STATUS_CFG.pending;
+      const color=rc(it.room||'Other');
+      const th=it.imageUrl?`<img src="${esc(it.imageUrl)}" class="td-thumb" onerror="this.outerHTML='<div class=\\'td-thumb-ph\\'>📦</div>'" alt="">` :`<div class="td-thumb-ph">📦</div>`;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`
+        <td>${th}</td>
+        <td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span class="room-dot" style="background:${color}"></span>${esc(it.room||'—')}</td>
+        <td><div class="td-name">${esc(it.name)}</div>${it.size?`<div class="td-note">${esc(it.size)}</div>`:''}${it.notes?`<div class="td-note" style="color:var(--ink-faint);font-style:italic">${esc(it.notes.slice(0,55))}${it.notes.length>55?'…':''}</div>`:''}</td>
+        <td style="font-size:.72rem;color:var(--ink-soft)">${TAB_SHORT[it.tab]||it.tab}</td>
+        <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.79rem">${esc(it.vendor||'—')}</td>
+        <td class="td-link">${it.link?`<a href="${esc(it.link)}" target="_blank">🔗 View</a>`:'<span class="no-link">—</span>'}</td>
+        <td class="td-r"><span class="mono">${up!==null?fmt(up):'—'}</span>${hasSav?`<span class="savings">-${Math.round((1-it.priceAfter/it.priceBefore)*100)}%</span>`:''}</td>
+        <td class="td-c mono">${it.qty||1}</td>
+        <td class="td-r mono" style="font-weight:700">${total!==null&&total>0?fmt(total):'—'}</td>
+        <td class="td-c">${['','🔴','🟠','🟡','⚪'][it.priority]||'—'}</td>
+        <td class="td-c"><span class="badge ${sc.cls}">${sc.label}</span></td>
+        <td style="font-size:.71rem;color:var(--ink-soft);font-family:'DM Mono',monospace;max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.tracking||it.arrival||'')}</td>
+        <td style="text-align:right;white-space:nowrap"><button class="iBtn" onclick="editItem(${it.id})">✏️</button><button class="iBtn del" onclick="deleteItem(${it.id})">🗑</button></td>`;
+      body.appendChild(tr);
+    });
+    const ft=list.reduce((s,it)=>s+(it.priceAfter??it.priceBefore??0)*(it.qty||1),0);
+    document.getElementById('filtTotal').textContent=fmt(ft);
+    document.getElementById('filtCount').textContent=`${list.length} item${list.length!==1?'s':''}`;
+  }
+  updateStats();updateCounts();
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function updateStats(){
+  const all=items;
+  const grand=all.reduce((s,i)=>s+(i.priceAfter??i.priceBefore??0)*(i.qty||1),0);
+  const grandB=all.reduce((s,i)=>s+(i.priceBefore??0)*(i.qty||1),0);
+  const ordA=all.filter(i=>i.status==='ordered').reduce((s,i)=>s+(i.priceAfter??i.priceBefore??0)*(i.qty||1),0);
+  const recvA=all.filter(i=>i.status==='received'||i.status==='done').reduce((s,i)=>s+(i.priceAfter??i.priceBefore??0)*(i.qty||1),0);
+  const buyA=all.filter(i=>i.status==='pending'||i.status==='wishlist').reduce((s,i)=>s+(i.priceAfter??i.priceBefore??0)*(i.qty||1),0);
+  document.getElementById('stItems').textContent=all.length;
+  document.getElementById('stRooms').textContent=`${[...new Set(all.map(i=>i.room).filter(Boolean))].length} active spaces`;
+  document.getElementById('stGrand').textContent=fmt(grand);
+  document.getElementById('stSaved').textContent=(grandB-grand)>0?fmt(grandB-grand)+' saved':'No discounts tracked';
+  document.getElementById('stOrd').textContent=fmt(ordA);document.getElementById('stOrdCt').textContent=`${all.filter(i=>i.status==='ordered').length} items`;
+  document.getElementById('stRecv').textContent=fmt(recvA);document.getElementById('stRecvCt').textContent=`${all.filter(i=>i.status==='received'||i.status==='done').length} items`;
+  document.getElementById('stBuy').textContent=fmt(buyA);document.getElementById('stBuyCt').textContent=`${all.filter(i=>i.status==='pending'||i.status==='wishlist').length} pending`;
+  document.getElementById('hdrTotal').textContent=fmt(grand);document.getElementById('hdrNeeded').textContent=fmt(buyA);
+  document.getElementById('sb-recv').textContent=fmt(recvA);document.getElementById('sb-buy').textContent=fmt(buyA);
+}
+function updateCounts(){
+  document.getElementById('cnt-all').textContent=items.length;
+  document.getElementById('cnt-furn').textContent=items.filter(i=>i.tab==='Furniture and Decor').length;
+  document.getElementById('cnt-stock').textContent=items.filter(i=>i.tab==='Stocking Items').length;
+  document.getElementById('cnt-upgr').textContent=items.filter(i=>i.tab==='Upgrades').length;
+}
+function setTab(el){document.querySelectorAll('.sb-btn[data-tab]').forEach(b=>b.classList.remove('active'));el.classList.add('active');currentTab=el.dataset.tab;currentStatus=null;document.querySelectorAll('.sb-btn[data-status]').forEach(b=>b.classList.remove('active'));render()}
+function setStatus(el){const was=el.classList.contains('active');document.querySelectorAll('.sb-btn[data-status],.sb-btn[data-tab]').forEach(b=>b.classList.remove('active'));document.querySelector('.sb-btn[data-tab="all"]').classList.add('active');currentTab='all';currentStatus=was?null:el.dataset.status;if(!was)el.classList.add('active');render()}
+function srt(col){sortDir=sortCol===col?sortDir*-1:1;sortCol=col;render()}
+function openForm(id=null){
+  editId=id;updateRoomDropdowns();
+  document.getElementById('formTitle').textContent=id?'Edit Item':'Add New Item';
+  document.getElementById('urlLookupBar').style.display=id?'none':'block';
+  document.getElementById('lookupUrl').value='';document.getElementById('lookupPreview').classList.remove('show');document.getElementById('lookupStatus').classList.remove('show');
+  pendingLookup=null;window._pendingImg=null;
+  if(id){const it=items.find(i=>i.id===id);if(!it)return;['name','tab','room','pbefore','pafter','qty','ship','link','vendor','shipto','status','priority','tracking','arrival','size','notes'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=it[{pbefore:'priceBefore',pafter:'priceAfter',ship:'shipping',shipto:'shipTo'}[k]||k]||''});}
+  else clearForm();
+  document.getElementById('formPanel').classList.add('open');
+  setTimeout(()=>document.getElementById(editId?'f-name':'lookupUrl').focus(),50);
+}
+function closeForm(){document.getElementById('formPanel').classList.remove('open');editId=null;pendingLookup=null;window._pendingImg=null}
+function clearForm(){['f-name','f-pbefore','f-pafter','f-ship','f-link','f-vendor','f-tracking','f-arrival','f-size','f-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-qty').value=1;document.getElementById('f-tab').value='Furniture and Decor';document.getElementById('f-room').value='';document.getElementById('f-status').value='pending';document.getElementById('f-priority').value=2;document.getElementById('f-shipto').value=''}
+function saveItem(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('Item name is required.');return}
+  const pb=parseFloat(document.getElementById('f-pbefore').value)||null;
+  const pa=parseFloat(document.getElementById('f-pafter').value)||null;
+  const qty=parseInt(document.getElementById('f-qty').value)||1;
+  const up=pa??pb??0;
+  const imageUrl=window._pendingImg||(editId?items.find(i=>i.id===editId)?.imageUrl:null)||null;
+  const item={id:editId||Date.now(),name,tab:document.getElementById('f-tab').value,room:document.getElementById('f-room').value,priceBefore:pb,priceAfter:pa??pb,qty,shipping:parseFloat(document.getElementById('f-ship').value)||null,link:document.getElementById('f-link').value.trim(),vendor:document.getElementById('f-vendor').value.trim(),shipTo:document.getElementById('f-shipto').value,status:document.getElementById('f-status').value,priority:parseInt(document.getElementById('f-priority').value),tracking:document.getElementById('f-tracking').value.trim(),arrival:document.getElementById('f-arrival').value.trim(),size:document.getElementById('f-size').value.trim(),notes:document.getElementById('f-notes').value.trim(),imageUrl,unitPrice:up,lineTotal:up*qty};
+  if(editId){const idx=items.findIndex(i=>i.id===editId);if(idx!==-1)items[idx]=item}else items.push(item);
+  persist();closeForm();render();showToast(`"${name.slice(0,30)}" saved!`);
+}
+function editItem(id){openForm(id)}
+function deleteItem(id){if(!confirm('Remove this item?'))return;items=items.filter(i=>i.id!==id);persist();render()}
+function exportCSV(){
+  const list=getFiltered();
+  const cols=['Room','Item','Tab','Vendor','Link','Price Before','Price After','Qty','Line Total','Shipping','Status','Priority','Tracking','Arrival','Size','Notes'];
+  const rows=list.map(it=>[it.room,it.name,it.tab,it.vendor,it.link,it.priceBefore||'',it.priceAfter||'',it.qty||1,((it.priceAfter??it.priceBefore??0)*(it.qty||1)).toFixed(2),it.shipping||'',it.status,it.priority,it.tracking,it.arrival,it.size,it.notes].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','));
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent([cols.join(','),...rows].join('\n'));a.download='STR_Purchase_List.csv';a.click();
+}
+
+// ── INIT ──
+checkUrlParams();
+updateRoomDropdowns();
+render();
+checkInbox();
+
+// Poll for new inbox items every 5 seconds (in case extension adds while tab is open)
+setInterval(()=>{
+  const fresh=JSON.parse(localStorage.getItem('str_inbox')||'[]');
+  if(fresh.length!==inbox.length){inbox=fresh;checkInbox()}
+},5000);
+</script>
+</body>
+</html>
